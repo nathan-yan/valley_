@@ -1,0 +1,34 @@
+
+import theano
+import numpy
+import load
+import theano.tensor as T
+from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
+import numpy as np
+from theano.tensor.nnet.conv import conv2d
+from theano.tensor.signal.downsample import max_pool_2d
+srng = RandomStreams()
+def init_weights(shape):
+    return theano.shared(np.random.randn(*shape) * 0.01)
+params = []
+inp0 = T.tensor4()
+target6 = T.matrix()
+param2= init_weights([20, 1, 3, 3])
+params.append(param2)
+conv1=T.nnet.conv2d(input = inp0, filters = param2,border_mode = 'half',subsample=(2,2))
+param4= init_weights([20, 1, 3, 3])
+params.append(param4)
+conv3=T.nnet.conv2d(input = inp0, filters = param4,border_mode = 'half',subsample=(2,1))
+merge1 = T.concatenate([conv1, conv3], axis = -1
+loss5=T.mean(T.sum((target6 - target6) ** 2, axis = -1))
+updates = []
+for p, g in zip(params, []):
+    updates.append([p, p - g * 0.01])
+train = theano.function(inputs = [inp0,target6], outputs = [], updates = updates)
+mnist = load.MNIST()
+X, y = mnist.load_training()
+for epoch in range (100):
+    for batch in range (0, X.shape[0], 50):
+        [] = train(X[batch:batch+50], y[batch:batch+50])
+        if batch % 1000 == 0:
+            print []
