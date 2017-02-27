@@ -82,7 +82,8 @@ def compile_graph(data_dim, target_dim, root):
     output_variables = []
     grad_variables = []
     grad_variables_text = []
-    grad_variables_text_ = []
+    grad_variables_text_ = {}
+    param_variables = []
 
     loss_ = ""
     params_text = []
@@ -174,7 +175,7 @@ def compile_graph(data_dim, target_dim, root):
                             cost = not "loss" in node.parents[0]
                             wrt = not cost
 
-                            grad_variables_text_.append(node.name)
+                            grad_variables_text_[node.parents[wrt]] = node.name
                             grad_variables_text.append(node.name +\
                                     "=T.grad(cost = " + node.parents[cost] +\
                                     ", wrt = " + node.parents[wrt] + ")")
@@ -187,6 +188,7 @@ def compile_graph(data_dim, target_dim, root):
                             write.add(node.name +\
                                     "= init_weights(" + str(node.param_size) + ")")
                             write.add("params.append(" + str(node.name) + ")")
+                            param_variables.append(node.name)
                         
                         elif node.type == "flatten":
                             write.add(node.name +\
@@ -209,11 +211,13 @@ def compile_graph(data_dim, target_dim, root):
 
                         elif node.type == 'merge':
                             write.add(node.name +\
-                                     " = T.concatenate(" + str(node.parents).replace("'", '') +\
-                                     ", axis = " + str(node.param_size[0]) + ")")
-
+                                        " = T.concatenate(" + str(node.parents).replace("'", '') +\
+                                        ", axis = " + str(node.param_size[0]) + ")")
+                        elif node.type == 'split':
+                            write.add(node.name +\
+                                        " =" + str(node.parents[0]) + node.param_size)
                     except TypeError:
-                        p = "parents - " + str(parent)
+                        p = "parents, name - " + str(node.parents) + " " + str(node.name)
 
                         return "Type error, make sure all your forms are filled (" + p + ")"
                     
@@ -225,7 +229,12 @@ def compile_graph(data_dim, target_dim, root):
         write.add(i)
 
     write.add("updates = []")
-    write.add("for p, g in zip(params, " + str(grad_variables_text_).replace("'", '') + "):")
+
+    gradients = []
+    for p in param_variables:
+        gradients.append(grad_variables_text_[p])
+
+    write.add("for p, g in zip(" + str(param_variables).replace("'", '') + ", " + str(gradients).replace("'", '') + "):")
     write.add("    updates.append([p, p - g * 0.01])")
     write.add("train = theano.function(inputs = [" + root.name + "," +  target_path+ "], outputs = " + str(output_variables).replace("'", '') + ", updates = updates)")
 
